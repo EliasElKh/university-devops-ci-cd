@@ -1,0 +1,37 @@
+name: ci-cd
+
+on:
+  push:
+    branches: [feature/frontend, main]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm test -- --watchAll=false
+
+      - run: npm run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: react-build
+          path: build
+
+  deploy:
+    needs: build-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Deploy Hook
+        run: |
+          curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK }}
